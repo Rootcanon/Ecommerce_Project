@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.hypothesis/
+.pytest_cache/
+
+# Virtual environment
+.venv/
+
+# Database
+db.sqlite3
+
+# Media/uploads
+media/
+
+# Environment variables
+.env
+
+# Build log
+AGENT.md
+IDEA.md
