@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils.text import slugify
+from django.urls import reverse
 
 # Create your models here.
 
@@ -11,6 +12,9 @@ class Category(models.Model):
     class Meta:
         verbose_name_plural = "categories"
         ordering = ["name",]
+
+    def get_absolute_url(self):
+        return reverse("store:category_products", kwargs={"slug": self.slug})
 
     def __str__(self):
         return self.name
@@ -52,6 +56,9 @@ class Product(models.Model):
         """Return the primary image, or the first image, or None."""
         return self.images.filter(is_primary=True).first() or self.images.first()
 
+    def get_absolute_url(self):
+        return reverse("store:product_detail", kwargs={"slug": self.slug})
+
     def __str__(self):
         return self.title
 
@@ -73,6 +80,29 @@ class ProductImage(models.Model):
                 name="unique_primary_image_per_product",
             )
         ]
+
+    def save(self, *args, **kwargs):
+        """Auto-unmark any other primary image for this product"""
+        if self.is_primary:
+            ProductImage.objects.filter(
+                product=self.product, is_primary=True
+            ).exclude(pk=self.pk).update(is_primary=False)
+        super().save(*args, **kwargs)
+
+    def validate_constraints(self, exclude=None):
+        """
+        Skip the unique_primary_image_per_product constraint during form validation.
+        The save() method enforces this by auto-unmarking the old primary image.
+        The database-level UniqueConstraint still catches race conditions.
+        """
+        if exclude is None:
+            exclude = set()
+        else:
+            exclude = set(exclude)
+        # Exclude 'is_primary' so the UniqueConstraint check is skipped during
+        # form validation — the save() override handles it correctly
+        exclude.add('is_primary')
+        super().validate_constraints(exclude=exclude)
 
     def __str__(self):
         return f"Image for {self.product.title}"

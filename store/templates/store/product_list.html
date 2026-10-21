@@ -1,0 +1,54 @@
+{% extends 'store/base.html' %}
+
+{% block title %}
+  Product List
+{% endblock %}
+
+{% block content %}
+  <h1>
+    {% if category %}
+      {{ category.name }}
+    {% else %}
+      All Products
+    {% endif %}
+  </h1>
+  <div class="row row-cols-1 row-cols-md-3 g-4">
+    {% for product in products %}
+      <div class="col">
+        <div class="card h-100">
+          {% if product.primary_image %}
+            <img src="{{ product.primary_image.image.url }}" class="card-img-top" alt="{{ product.title }}" style="max-height: 400px; width: 100%; object-fit: contain;" />
+          {% endif %}
+          <div class="card-body">
+            <h5 class="card-title">{{ product.title }}</h5> {# ← field is 'title', not 'name' #}
+            <p class="card-text">${{ product.price }}</p>
+            <a href="{{ product.get_absolute_url }}" class="stretched-link">View</a>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <p>No products found.</p>
+    {% endfor %}
+  </div>
+  {% if products.has_other_pages %}
+    <nav aria-label="Page navigation" class="mt-4">
+      <ul class="pagination">
+        {% if products.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ products.previous_page_number }}">Previous</a>
+          </li>
+        {% endif %}
+        {% for i in products.paginator.page_range %}
+          <li class="page-item {% if products.number == i %}active{% endif %}">
+            <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+          </li>
+        {% endfor %}
+        {% if products.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ products.next_page_number }}">Next</a>
+          </li>
+        {% endif %}
+      </ul>
+    </nav>
+  {% endif %}
+{% endblock %}
