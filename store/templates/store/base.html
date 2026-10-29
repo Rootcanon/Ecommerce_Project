@@ -16,6 +16,7 @@
     <nav>
       <div class="container">
         <a class="navbar-brand" href="{% url 'store:product_list' %}">My Store</a>
+        <a href="{% url 'store:cart_detail' %}" class="nav-link">Cart (<span class="cart-count">{{ cart_obj.get_item_count}}</span>)</a>
       </div>
     </nav>
     <main class="container mt-4">
