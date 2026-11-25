@@ -1,0 +1,51 @@
+{% extends 'store/base.html' %}
+
+{% block title %}
+  Order Confirmation
+{% endblock %}
+
+{% block content %}
+  <h1>Thank you for your order!</h1>
+
+  <h2>Order No. {{ order.pk }}</h2>
+  <h3>{{ order.get_state_display }} | Total: {{ order.total }} | Dated: {{ order.created_at|date:'M j, Y H:i' }}</h3>
+  <h3>Shipping address: {{ order.shipping_address }}</h3>
+
+  <br />
+
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th scope="col">Product</th>
+        <th scope="col">Preview</th>
+        <th scope="col">Qty</th>
+        <th scope="col">Price</th>
+        <th scope="col">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in order.orderitem_set.all %}
+        <tr>
+          <!-- Product title (links to detail page) -->
+          <td>
+            <a href="{{ item.product.get_absolute_url }}" class="text-decoration-none">{{ item.product.title }}</a>
+          </td>
+          <!-- Thumbnail via primary_image() method -->
+          <td>
+            {% if item.product.primary_image %}
+              <img src="{{ item.product.primary_image.image.url }}" alt="{{ item.product.title }}" width="60" height="60" style="object-fit: cover; border-radius: 4px;" />
+            {% else %}
+              <span class="text-muted fst-italic">No image</span>
+            {% endif %}
+          </td>
+          <!-- Quantity: number input per your design -->
+          <td>{{ item.quantity }}</td>
+          <!-- Price per unit -->
+          <td>${{ item.unit_price }}</td>
+          <!-- Line total -->
+          <td>${{ item.line_total }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

@@ -2,10 +2,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import ListView, DetailView
 from django.views import View
 from django.views.decorators.http import require_http_methods
-
+from django.core.mail import send_mail
+from django.contrib import messages
+from decimal import Decimal
 
 from .cart import Cart
-from .models import Category, Product
+from .models import Category, Product, Order, OrderItem
 # Create your views here.
 
 
@@ -112,7 +114,114 @@ class CartView(View):
             cart.save()
 
         elif action == "purchase":
-            return redirect("store:cart_detail")
+            return redirect("store:checkout")
 
     # Redirect the url:"store:cart_detail"
         return redirect("store:cart_detail")
+
+
+class CheckoutView(View):
+
+    def get(self, request):
+        cart = Cart(request)
+        if not cart.cart:
+            return redirect("store:product_list")
+
+        product_ids = [int(pid) for pid in cart.cart.keys()]
+        products = Product.objects.filter(pk__in=product_ids)
+
+        cart_items = []
+        for product in products:
+            qty = cart.cart[str(product.pk)]["quantity"]
+            price = float(cart.cart[str(product.pk)]["price"])
+            cart_items.append({
+                "product": product,
+                "quantity": qty,
+                "price": price,
+                "total": qty * price,
+            })
+
+        return render(request, "store/checkout.html", {
+            "cart_items": cart_items,
+            "total_price": cart.get_total_price(),
+            "item_count": cart.get_item_count(),
+        })
+
+    def post(self, request):
+        cart = Cart(request)
+        if not cart.cart:
+            return redirect("store:product_list")
+
+        email = request.POST.get("email", "").strip()
+        shipping_address = request.POST.get("shipping_address", "").strip()
+
+        if not email or not shipping_address:
+            messages.error(request, "Email and shipping address are required.")
+            return redirect("store:checkout")
+
+        product_ids = [int(pid) for pid in cart.cart.keys()]
+        products = Product.objects.filter(pk__in=product_ids)
+        for product in products:
+            qty = cart.cart[str(product.pk)]["quantity"]
+            if qty > product.stock_quantity:
+                messages.error(
+                    request, f"Not enough stock for {product.title}. Available: {product.stock_quantity}.")
+                return redirect("store:cart_detail")
+
+        order = Order.objects.create(
+            email=email,
+            shipping_address=shipping_address,
+            total=cart.get_total_price(),
+            user=request.user if request.user.is_authenticated else None,
+        )
+
+        order_items = []
+        for product in products:
+            product_price_from_cart = Decimal(
+                cart.cart[str(product.pk)]["price"])
+            qty = cart.cart[str(product.pk)]["quantity"]
+
+            OrderItem.objects.create(
+                order=order,
+                product=product,
+                quantity=qty,
+                unit_price=product_price_from_cart
+            )
+            product.stock_quantity -= qty
+            product.save(update_fields=["stock_quantity"])
+
+            line = f"- {product.title} x {qty} @ {product_price_from_cart}$"
+            order_items.append(line)
+
+        items_text = "\n".join(order_items)
+        message = f"""
+        Thank you for your order!
+
+        Order Number: {order.pk}
+        Order Total: {order.total}$
+        
+        Items Purchased:
+            {items_text}
+        
+        Shipping Address:
+            {order.shipping_address}
+
+        We appreciate your business and hope you enjoy your purchase!
+        """
+
+        send_mail(
+            subject="Your order confirmation from My Store",
+            message=message,
+            from_email="orders@yourstore.com",
+            recipient_list=[email])
+
+        cart.clear()
+
+        return redirect("store:order_confirmation", pk=order.pk)
+
+
+class OrderConfirmationView(DetailView):
+    model = Order
+    # tell me if i should change the name
+    template_name = "store/order_confirmation.html"
+    context_object_name = "order"

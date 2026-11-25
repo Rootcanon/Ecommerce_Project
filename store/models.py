@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.text import slugify
 from django.urls import reverse
+from django.contrib.auth.models import User
 
 # Create your models here.
 
@@ -106,3 +107,44 @@ class ProductImage(models.Model):
 
     def __str__(self):
         return f"Image for {self.product.title}"
+
+
+class Order(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "p", "Pending"
+        PAID = "P", "Paid"
+        SHIPPED = "S", "Shipped"
+        CANCEL = "C", "Cancelled"
+
+    user = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True)
+    email = models.EmailField(max_length=254)
+    state = models.CharField(
+        choices=Status, default=Status.PENDING, max_length=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    total = models.DecimalField(max_digits=10, decimal_places=2)
+    shipping_address = models.TextField()
+
+    class Meta:
+        verbose_name_plural = "orders"
+        ordering = ["created_at",]
+
+    def __str__(self):
+        if self.user:
+            return f"{self.user} - {self.total} | {self.created_at} - {self.state}"
+        else:
+            return f"anonymous - {self.total} | {self.created_at} - {self.state}"
+
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    @property
+    def line_total(self):
+        return self.quantity * self.unit_price
+
+    def __str__(self):
+        return f"{self.order}. {self.product} {self.quantity} | {self.line_total}"

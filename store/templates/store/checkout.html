@@ -1,0 +1,60 @@
+{% extends 'store/base.html' %}
+
+{% block title %}
+  Checkout
+{% endblock %}
+
+{% block content %}
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th scope="col">Product</th>
+        <th scope="col">Preview</th>
+        <th scope="col">Qty</th>
+        <th scope="col">Price</th>
+        <th scope="col">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in cart_items %}
+        <tr>
+          <!-- Product title (links to detail page) -->
+          <td>
+            <a href="{{ item.product.get_absolute_url }}" class="text-decoration-none">{{ item.product.title }}</a>
+          </td>
+          <!-- Thumbnail via primary_image() method -->
+          <td>
+            {% if item.product.primary_image %}
+              <img src="{{ item.product.primary_image.image.url }}" alt="{{ item.product.title }}" width="60" height="60" style="object-fit: cover; border-radius: 4px;" />
+            {% else %}
+              <span class="text-muted fst-italic">No image</span>
+            {% endif %}
+          </td>
+          <!-- Quantity: number input per your design -->
+          <td>{{ item.quantity }}</td>
+          <!-- Price per unit -->
+          <td>${{ item.price }}</td>
+          <!-- Line total -->
+          <td>${{ item.total }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <h4>Total: {{ total_price }}$</h4>
+
+  <form method="post" action="{% url 'store:checkout' %}">
+    {% csrf_token %}
+    <label for="email">Email:</label>
+    {% if request.user.is_authenticated %}
+      <input type="email" name="email" value="{{ request.user.email }}" required />
+    {% else %}
+      <input type="email" name="email" id="email" required />
+    {% endif %}
+    <label for="shipping_address">Shipping Address</label>
+    <textarea name="shipping_address" id="shipping_address" required></textarea>
+
+    <button type="submit">Place Order</button>
+  </form>
+
+  <a class="btn btn-outline-secondary" href="{% url 'store:cart_detail' %}">← Back to cart</a>
+{% endblock %}

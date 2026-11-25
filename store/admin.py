@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Category, Product, ProductImage
+from .models import Category, Product, ProductImage, Order, OrderItem
 # Register your models here.
 
 
@@ -77,3 +77,21 @@ class ProductAdmin(admin.ModelAdmin):
             )
         return "No image"
     image_thumbnail.short_description = "Preview"
+
+
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    fields = ("product", "quantity", "unit_price")
+    extra = 0
+
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    list_display = (
+        "created_at", "user", "email", "state", "total", "shipping_address"
+    )
+    list_filter = (
+        "state", "created_at",
+    )
+    list_per_page = 25
+    inlines = [OrderItemInline]
